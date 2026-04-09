@@ -19,7 +19,7 @@ npm install -g zread_cli
 or
 
 ```bash
-brew tap codegeex/homebrew-tap
+brew tap ZreadAI/homebrew-tap
 brew install zread
 ```
 
@@ -34,7 +34,7 @@ zread version
 Ask your AI agent to install the skill from GitHub:
 
 ```text
-install this skill https://github.com/zread-ai/zread-skill
+install this skill https://github.com/ZreadAI/zread-skill
 ```
 
 If you prefer to install it manually, copy this directory into your local
