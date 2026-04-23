@@ -1,5 +1,7 @@
 # zread-skill (Optimized Version)
 
+English | [简体中文](./README_CN.md)
+
 An optimized skill for AI agents to efficiently utilize zread knowledge bases for understanding codebases.
 
 ## What's New in This Version
