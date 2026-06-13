@@ -70,15 +70,23 @@ This is an **optimized version** of the original zread-skill with significant en
 
 ### Install This Skill
 
-Copy to your agent's skills directory:
+Install to your agent's skills directory:
 
 ```bash
-# For Claude Code
-cp -R zread-skill-final ~/.claude/skills/zread
+# For Multica/Codex workspace agents
+scripts/install.sh --target agents
 
-# For other agents
-cp -R zread-skill-final ~/.agents/skills/zread
+# For Claude Code
+scripts/install.sh --target claude
+
+# For Codex using CODEX_HOME or ~/.codex
+scripts/install.sh --target codex
 ```
+
+Restart or start a new agent session after installation so the global skill
+list is reloaded. Keep only one installed skill whose frontmatter declares
+`name: zread`; duplicate directories such as both `zread` and `zread-skill`
+can make loading ambiguous.
 
 ## Usage Examples
 
@@ -118,11 +126,12 @@ VERSION=$(cat ./.zread/wiki/current)
 # 2. Smart page recommendation (detects "auth" keyword)
 PAGES=("authentication" "authorization" "security")
 
-# 3. Reads relevant pages in parallel
+# 3. Reads relevant pages in parallel, using wiki.json's file field
 for page in "${PAGES[@]}"; do
   FILE=$(jq -r ".pages[] | select(.slug == \"$page\") | .file" \
     ./.zread/wiki/versions/$VERSION/wiki.json)
-  cat ./.zread/wiki/versions/$VERSION/$FILE &
+  [ -n "$FILE" ] && [ "$FILE" != "null" ] && \
+    cat ./.zread/wiki/versions/$VERSION/$FILE &
 done
 wait
 
@@ -218,7 +227,9 @@ This optimized version has been tested with:
 - ✅ Smart recommendation tested
 - ✅ Error handling confirmed
 
-See `/tmp/multica/verification_report.md` for detailed test results.
+For repeatable verification, create a small `.zread/wiki/` fixture and test
+the lookup flow against `wiki.json`'s `pages[].file` values. Avoid relying on
+temporary local report paths in published documentation.
 
 ## Contributing
 

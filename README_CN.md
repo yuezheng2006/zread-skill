@@ -70,15 +70,22 @@
 
 ### 安装此技能
 
-复制到你的 Agent 技能目录：
+安装到你的 Agent 技能目录：
 
 ```bash
-# 对于 Claude Code
-cp -R zread-skill-final ~/.claude/skills/zread
+# Multica/Codex workspace agents
+scripts/install.sh --target agents
 
-# 对于其他 Agent
-cp -R zread-skill-final ~/.agents/skills/zread
+# Claude Code
+scripts/install.sh --target claude
+
+# Codex，使用 CODEX_HOME 或 ~/.codex
+scripts/install.sh --target codex
 ```
+
+安装后需要重启或新开 Agent 会话，才能让全局 skill 列表重新加载。建议只保留一个
+frontmatter 为 `name: zread` 的目录；如果同时存在 `zread` 和 `zread-skill`，
+可能导致加载结果不明确。
 
 ## 使用示例
 
@@ -118,11 +125,12 @@ VERSION=$(cat ./.zread/wiki/current)
 # 2. 智能页面推荐（检测到 "auth" 关键词）
 PAGES=("authentication" "authorization" "security")
 
-# 3. 并行读取相关页面
+# 3. 并行读取相关页面，始终使用 wiki.json 里的 file 字段
 for page in "${PAGES[@]}"; do
   FILE=$(jq -r ".pages[] | select(.slug == \"$page\") | .file" \
     ./.zread/wiki/versions/$VERSION/wiki.json)
-  cat ./.zread/wiki/versions/$VERSION/$FILE &
+  [ -n "$FILE" ] && [ "$FILE" != "null" ] && \
+    cat ./.zread/wiki/versions/$VERSION/$FILE &
 done
 wait
 
@@ -218,7 +226,7 @@ wait
 - ✅ 智能推荐测试
 - ✅ 错误处理确认
 
-详细测试结果见 `/tmp/multica/verification_report.md`。
+建议把可复现的验证样例放到仓库中，而不是依赖 `/tmp` 下的一次性报告。
 
 ## 典型使用场景
 
@@ -290,8 +298,8 @@ if [ -f ./.zread/wiki/current ]; then
   # 使用现有知识库
   VERSION=$(cat ./.zread/wiki/current)
 else
-  # 生成新知识库
-  zread generate --resume
+  # 先询问用户是否生成新知识库；generate 会消耗 LLM token
+  echo "未找到 zread 知识库，是否运行 zread generate？"
 fi
 ```
 
@@ -301,7 +309,7 @@ fi
 USER_QUESTION="如何部署这个应用？"
 # 推荐页面：deployment.md, getting-started.md, configuration.md
 
-# ❌ 不好的做法 - 读取所有页面
+# ❌ 不好的做法 - 假设页面目录并读取所有页面
 cat ./.zread/wiki/versions/$VERSION/pages/*.md
 ```
 
@@ -309,7 +317,10 @@ cat ./.zread/wiki/versions/$VERSION/pages/*.md
 ```bash
 # ✅ 好的做法 - 并行读取
 for page in overview architecture api; do
-  cat ./.zread/wiki/versions/$VERSION/pages/$page.md &
+  FILE=$(jq -r --arg slug "$page" \
+    '.pages[] | select(.slug == $slug) | .file // empty' \
+    ./.zread/wiki/versions/$VERSION/wiki.json)
+  [ -n "$FILE" ] && cat "./.zread/wiki/versions/$VERSION/$FILE" &
 done
 wait
 
@@ -349,12 +360,11 @@ fi
 ### Q3: 如何更新知识库？
 **A:** 
 ```bash
-# 增量更新（推荐）
-zread generate --resume
+# 恢复上次中断的草稿
+zread generate --draft resume -y --stdio
 
-# 完全重新生成
-rm -rf ./.zread/wiki
-zread generate
+# 清除草稿并重新生成，需先获得用户确认
+zread generate --draft clear -y --stdio
 ```
 
 ### Q4: 知识库占用多少空间？
@@ -419,7 +429,10 @@ MATCHES=$(jq -r ".pages[] | select(.title | contains(\"$KEYWORD\")) | .slug" \
 
 for slug in $MATCHES; do
   # 只读取匹配的页面
-  cat ./.zread/wiki/versions/$VERSION/pages/$slug.md
+  FILE=$(jq -r --arg slug "$slug" \
+    '.pages[] | select(.slug == $slug) | .file // empty' \
+    ./.zread/wiki/versions/$VERSION/wiki.json)
+  [ -n "$FILE" ] && cat "./.zread/wiki/versions/$VERSION/$FILE"
 done
 ```
 
